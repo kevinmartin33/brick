@@ -1,0 +1,13 @@
+{
+  "name": "Brick",
+  "short_name": "Brick",
+  "description": "Notices de montage 3D, étape par étape, à suivre à la voix.",
+  "lang": "fr",
+  "start_url": "/build/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dfe8f1",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

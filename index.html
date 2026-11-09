@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Brick · Notices de briques en 3D, à suivre à la voix</title>
+  <meta name="description" content="Tourne le modèle, vois chaque pièce et avance en disant « suivant ». Gratuit et open source.">
+  <meta name="theme-color" content="#dfe8f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#18212d" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="Brick">
+  <meta property="og:description" content="3D brick building instructions you can follow by voice. Free and open source.">
+  <meta property="og:url" content="https://brick.studio104.fr/">
+  <link rel="canonical" href="https://brick.studio104.fr/">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+</head>
+<body>
+  <header class="top wrap">
+    <a class="logo" href="/"><i aria-hidden="true"></i>Brick</a>
+    <nav class="top-nav">
+      <div class="langs" role="group" aria-label="Language">
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="fr">FR</button>
+        <button type="button" data-lang="es">ES</button>
+      </div>
+      <a class="btn small" href="/build/4915" data-i18n="nav_open">Ouvrir une notice</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <div class="hero-text">
+        <h1 data-i18n="hero_title">Les notices de briques, en 3D et à la voix.</h1>
+        <p class="lead" data-i18n="hero_sub">Tourne le modèle, vois chaque pièce, et avance en disant « suivant ».</p>
+
+        <form class="search" id="search" novalidate>
+          <label for="q" class="label" data-i18n="search_label">Numéro du set</label>
+          <div class="search-row">
+            <input id="q" name="q" inputmode="numeric" autocomplete="off" data-i18n-placeholder="search_placeholder" placeholder="ex. 7140">
+            <button class="btn primary" type="submit" data-i18n="search_go">Trouver la notice</button>
+          </div>
+          <p class="hint" data-i18n="search_hint">Le numéro est écrit sur la boîte et sur la couverture de la notice papier.</p>
+        </form>
+
+        <div class="result" id="result" aria-live="polite" hidden></div>
+
+        <p class="try"><span data-i18n="try">À essayer :</span> <span id="chips"></span></p>
+      </div>
+
+      <div class="hero-stage" id="stage" aria-hidden="true">
+        <canvas id="c"></canvas>
+        <span class="stage-tag">4915 · Mini Construction</span>
+      </div>
+    </section>
+
+    <section class="features wrap">
+      <article><span class="num">3D</span><h2 data-i18n="f1_title"></h2><p data-i18n="f1_body"></p></article>
+      <article><span class="num">“…”</span><h2 data-i18n="f2_title"></h2><p data-i18n="f2_body"></p></article>
+      <article><span class="num">⊞</span><h2 data-i18n="f3_title"></h2><p data-i18n="f3_body"></p></article>
+      <article><span class="num">{ }</span><h2 data-i18n="f4_title"></h2><p data-i18n="f4_body"></p>
+        <a class="link" href="https://github.com/kevinmartin33/brick" target="_blank" rel="noopener" data-i18n="github">Voir le code sur GitHub</a></article>
+    </section>
+
+    <section class="privacy wrap" id="privacy">
+      <h2 data-i18n="privacy_title">Confidentialité</h2>
+      <p data-i18n="privacy_body"></p>
+      <button type="button" class="link" id="manageCookies" data-i18n="privacy_manage">Modifier mon choix sur les cookies</button>
+    </section>
+  </main>
+
+  <footer class="foot wrap">
+    <p data-i18n="legal"></p>
+    <p><a href="https://studio104.fr" data-i18n="by">Un projet Studio 104</a></p>
+  </footer>
+
+  <script type="module" src="/src/site/main.ts"></script>
+</body>
+</html>

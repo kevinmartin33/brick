@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "studio104-eafad"
+  },
+  "targets": {
+    "studio104-eafad": {
+      "hosting": {
+        "brick": ["brick-studio104"]
+      }
+    }
+  }
+}
