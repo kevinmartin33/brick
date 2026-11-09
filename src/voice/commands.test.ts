@@ -48,3 +48,53 @@ describe('parseCommand', () => {
     expect(type('ok répète')).toBe('repeat');
   });
 });
+
+describe('parseCommand in English', () => {
+  const en = (s: string) => parseCommand(s, 'en')?.type ?? null;
+  it.each([
+    ['next', 'next'], ['done', 'next'], ['ok', 'next'], ['keep going', 'next'],
+    ['back', 'prev'], ['go back', 'prev'], ['previous', 'prev'],
+    ['repeat', 'repeat'], ['say that again', 'repeat'], ['what', 'repeat'],
+    ['which parts', 'parts'], ['what do I need', 'parts'],
+    ['zoom in', 'zoomIn'], ['zoom out', 'zoomOut'], ['closer', 'zoomIn'],
+    ['turn left', 'rotateLeft'], ['rotate right', 'rotateRight'], ['spin', 'spin'],
+    ['recenter', 'reset'], ['stop', 'stop'], ['help', 'help'],
+    ['start over', 'first'], ['last step', 'last'],
+  ])('“%s” → %s', (heard, expected) => expect(en(heard)).toBe(expected));
+
+  it('reads step numbers', () => {
+    expect(parseCommand('step 12', 'en')).toEqual({ type: 'goto', step: 12 });
+    expect(parseCommand('go to step twelve', 'en')).toEqual({ type: 'goto', step: 12 });
+    expect(parseCommand('step to', 'en')).toEqual({ type: 'goto', step: 2 });
+  });
+
+  it('ignores conversation', () => {
+    expect(en('what a nice day')).toBeNull();
+    expect(en('alright')).toBe('next');
+    expect(en('the right way to do it')).toBeNull();
+  });
+});
+
+describe('parseCommand in Spanish', () => {
+  const es = (s: string) => parseCommand(s, 'es')?.type ?? null;
+  it.each([
+    ['siguiente', 'next'], ['listo', 'next'], ['vale', 'next'], ['ya está', 'next'],
+    ['anterior', 'prev'], ['atrás', 'prev'],
+    ['repite', 'repeat'], ['otra vez', 'repeat'], ['¿qué?', 'repeat'],
+    ['piezas', 'parts'], ['qué necesito', 'parts'],
+    ['acércate', 'zoomIn'], ['aleja', 'zoomOut'],
+    ['gira a la izquierda', 'rotateLeft'], ['gira a la derecha', 'rotateRight'], ['gira', 'spin'],
+    ['centra', 'reset'], ['para', 'stop'], ['silencio', 'stop'], ['ayuda', 'help'],
+    ['empezar de nuevo', 'first'], ['último paso', 'last'],
+  ])('«%s» → %s', (heard, expected) => expect(es(heard)).toBe(expected));
+
+  it('reads step numbers', () => {
+    expect(parseCommand('paso 12', 'es')).toEqual({ type: 'goto', step: 12 });
+    expect(parseCommand('ve al paso doce', 'es')).toEqual({ type: 'goto', step: 12 });
+  });
+
+  it('does not stop on the preposition "para" inside a sentence', () => {
+    expect(es('esto es para mi hermano')).toBeNull();
+    expect(es('lo que sea')).toBeNull();
+  });
+});

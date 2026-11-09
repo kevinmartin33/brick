@@ -1,8 +1,9 @@
 // Hands-free control with the browser's speech recognition (Chrome, Edge, Safari).
-// Listens continuously in French, restarts itself when the browser stops after a silence,
+// Listens continuously (French, English or Spanish), restarts itself when the browser stops after a silence,
 // and can be paused while the app is speaking.
 
 import { parseCommand, type Command } from './commands';
+import { SPEECH_LOCALE, type Lang } from '../shared/i18n';
 
 export type VoiceState = 'off' | 'starting' | 'listening' | 'paused' | 'unsupported' | 'denied' | 'error';
 
@@ -20,13 +21,15 @@ export class VoiceControl {
   private running = false;
   private restartTimer = 0;
   private failures = 0;
+  private lang: Lang;
 
-  constructor() {
+  constructor(lang: Lang = 'fr') {
+    this.lang = lang;
     const C = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     this.supported = !!C;
     if (!C) return;
     const rec: Recognition = new C();
-    rec.lang = 'fr-FR';
+    rec.lang = SPEECH_LOCALE[lang];
     rec.continuous = true;
     rec.interimResults = false;
     rec.maxAlternatives = 3;
@@ -56,7 +59,7 @@ export class VoiceControl {
         let cmd: Command | null = null;
         let heard = r[0].transcript as string;
         for (let a = 0; a < r.length; a++) {
-          const c = parseCommand(r[a].transcript);
+          const c = parseCommand(r[a].transcript, this.lang);
           if (c) { cmd = c; heard = r[a].transcript; break; }
         }
         if (cmd) this.onCommand?.(cmd, heard.trim());
@@ -67,6 +70,14 @@ export class VoiceControl {
   }
 
   get active() { return this.wanted; }
+
+  /** Switches language; a running session restarts with the new one. */
+  setLang(lang: Lang) {
+    this.lang = lang;
+    if (!this.rec) return;
+    this.rec.lang = SPEECH_LOCALE[lang];
+    if (this.running) try { this.rec.abort(); } catch { /* onend restarts it */ }
+  }
 
   start() {
     if (!this.supported) { this.onState?.('unsupported'); return; }

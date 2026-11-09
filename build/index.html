@@ -16,40 +16,47 @@
 <body>
   <div class="app">
     <main class="stage" id="stage">
-      <canvas id="c" aria-label="Modèle 3D de l'étape en cours"></canvas>
+      <canvas id="c" data-i18n-aria="stage_aria"></canvas>
       <div class="badge-step" aria-live="polite"><b id="stepBig">–</b><span id="stepOf"></span></div>
       <div class="ctx" id="ctx" hidden></div>
       <div class="toast" id="toast" role="status" hidden></div>
-      <div class="stage-tools" role="group" aria-label="Vue">
-        <button class="tool" id="zoomIn" aria-label="Rapprocher">+</button>
-        <button class="tool" id="zoomOut" aria-label="Éloigner">−</button>
-        <button class="tool" id="recenter" aria-label="Recentrer la vue">⌖</button>
+      <div class="stage-tools" role="group">
+        <button class="tool" id="zoomIn" data-i18n-aria="zoom_in">+</button>
+        <button class="tool" id="zoomOut" data-i18n-aria="zoom_out">−</button>
+        <button class="tool" id="recenter" data-i18n-aria="recenter">⌖</button>
       </div>
-      <div class="stage-hint">Glisser pour tourner · pincer ou molette pour zoomer</div>
-      <div class="loading" id="loading">Chargement…</div>
+      <div class="stage-hint" data-i18n="hint_drag"></div>
+      <div class="loading" id="loading">…</div>
     </main>
 
     <aside class="sheet">
       <header class="brand">
         <h1><a href="/" class="home"><i aria-hidden="true"></i>Brick</a></h1>
-        <span class="chip">bêta</span>
+        <div class="brand-right">
+          <div class="langs" role="group" aria-label="Language">
+            <button type="button" data-lang="en">EN</button>
+            <button type="button" data-lang="fr">FR</button>
+            <button type="button" data-lang="es">ES</button>
+          </div>
+          <span class="chip" data-i18n="beta"></span>
+        </div>
       </header>
 
       <section class="voice" aria-labelledby="voiceBtn">
         <button class="voice-btn" id="voiceBtn" aria-pressed="false">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
-          <span id="voiceLabel">Activer la voix</span>
+          <span id="voiceLabel"></span>
         </button>
-        <p class="voice-status" id="voiceStatus">Mains libres : dis « suivant », « répète » ou « étape 12 ».</p>
+        <p class="voice-status" id="voiceStatus"></p>
         <p class="heard" id="heard" hidden></p>
       </section>
 
       <div class="field">
-        <label class="label" for="setSel">Set</label>
+        <label class="label" for="setSel" data-i18n="set_label"></label>
         <div class="set-row">
           <select id="setSel"></select>
-          <label class="btn small file" title="Fichier LDraw autonome (.mpd « packed »)">
-            Ouvrir…<input type="file" id="fileIn" accept=".mpd,.ldr" hidden>
+          <label class="btn small file" data-i18n-title="open_file_title">
+            <span data-i18n="open_file"></span><input type="file" id="fileIn" accept=".mpd,.ldr" hidden>
           </label>
         </div>
         <div class="meta" id="meta"></div>
@@ -58,14 +65,14 @@
       <div class="resume" id="resume" hidden>
         <span id="resumeText"></span>
         <div class="resume-actions">
-          <button class="btn small primary" id="resumeGo">Reprendre</button>
-          <button class="btn small" id="resumeReset">Recommencer</button>
+          <button class="btn small primary" id="resumeGo" data-i18n="resume_go"></button>
+          <button class="btn small" id="resumeReset" data-i18n="resume_reset"></button>
         </div>
       </div>
 
       <section class="callout" aria-labelledby="calloutTitle">
         <div class="callout-head">
-          <strong id="calloutTitle">Pièces de cette étape</strong>
+          <strong id="calloutTitle"></strong>
           <span class="label" id="calloutCount"></span>
         </div>
         <ul class="parts" id="stepParts"></ul>
@@ -73,34 +80,34 @@
 
       <div class="nav-wrap">
         <div class="nav">
-          <button class="btn" id="prev" aria-label="Étape précédente">← Préc.</button>
-          <button class="btn primary" id="next" aria-label="Étape suivante">Suivante →</button>
+          <button class="btn" id="prev" data-i18n="prev" data-i18n-aria="prev_aria"></button>
+          <button class="btn primary" id="next" data-i18n="next" data-i18n-aria="next_aria"></button>
         </div>
-        <input type="range" id="slider" min="0" max="0" value="0" aria-label="Aller à l'étape">
+        <input type="range" id="slider" min="0" max="0" value="0" data-i18n-aria="slider_aria">
       </div>
 
       <div class="opts">
-        <label><input type="checkbox" id="optNarrate"> Lire chaque étape à voix haute</label>
-        <label><input type="checkbox" id="optGhost"> Estomper les étapes précédentes</label>
-        <label><input type="checkbox" id="optDrop"> Animer l'arrivée des pièces</label>
-        <label><input type="checkbox" id="optSpin"> Rotation automatique</label>
+        <label><input type="checkbox" id="optNarrate"> <span data-i18n="opt_narrate"></span></label>
+        <label><input type="checkbox" id="optGhost"> <span data-i18n="opt_ghost"></span></label>
+        <label><input type="checkbox" id="optDrop"> <span data-i18n="opt_drop"></span></label>
+        <label><input type="checkbox" id="optSpin"> <span data-i18n="opt_spin"></span></label>
       </div>
 
       <details>
-        <summary>Ce que tu peux dire</summary>
+        <summary data-i18n="say_title"></summary>
         <dl class="cmds" id="cmds"></dl>
       </details>
 
       <details id="inv">
-        <summary>Inventaire complet <span class="label" id="invCount"></span></summary>
+        <summary><span data-i18n="inventory"></span> <span class="label" id="invCount"></span></summary>
         <ul class="parts" id="invParts"></ul>
       </details>
 
       <p class="foot">
-        Clavier : <kbd>←</kbd> <kbd>→</kbd> ou <kbd>Espace</kbd>.
-        Modèles : <a href="https://library.ldraw.org/omr" target="_blank" rel="noopener">LDraw OMR</a> (CC BY 2.0)<span id="author"></span>.
-        Projet indépendant, non affilié au groupe LEGO. Notices officielles sur
-        <a href="https://www.lego.com/fr-fr/service/building-instructions" target="_blank" rel="noopener">lego.com</a>.
+        <span data-i18n="keys"></span> <kbd>←</kbd> <kbd>→</kbd> <span data-i18n="or"></span> <kbd data-i18n="space"></kbd>.
+        <span data-i18n="models"></span> <a href="https://library.ldraw.org/omr" target="_blank" rel="noopener">LDraw OMR</a> (CC BY 2.0)<span id="author"></span>.
+        <span data-i18n="legal"></span>
+        <a id="legoLink" href="https://www.lego.com/service/building-instructions" target="_blank" rel="noopener">lego.com</a>.
       </p>
     </aside>
   </div>

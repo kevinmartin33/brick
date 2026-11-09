@@ -9,13 +9,21 @@ import { VoiceControl, type VoiceState } from '../voice/listener';
 import { COMMAND_HELP, parseCommand, type Command } from '../voice/commands';
 import { getPrefs, getProgress, setPrefs, setProgress } from '../storage';
 import { initAnalytics, track } from '../shared/analytics';
+import { detectLang, LEGO_LOCALE, saveLang, type Lang } from '../shared/i18n';
+import { APP_STRINGS } from './strings';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
+let lang: Lang = detectLang();
+const t = (key: string, vars: Record<string, string | number> = {}) =>
+  (APP_STRINGS[lang][key] ?? key).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
+
 const viewer = new Viewer($('stage'), $<HTMLCanvasElement>('c'));
-const speaker = new Speaker();
-const voice = new VoiceControl();
+const speaker = new Speaker(lang);
+const voice = new VoiceControl(lang);
+let voiceState: VoiceState = 'off';
+let author = '';
 
 let model: LoadedModel | null = null;
 let current = 0;
@@ -44,7 +52,7 @@ async function openSet(id: string, text?: string, label?: string) {
   const token = ++loadToken;
   const loading = $('loading');
   loading.hidden = false;
-  loading.textContent = 'Chargement du modèle…';
+  loading.textContent = t('loading');
   $('resume').hidden = true;
   try {
     let src = text;
@@ -52,21 +60,17 @@ async function openSet(id: string, text?: string, label?: string) {
       const entry = CATALOG.find((c) => c.id === id) ?? CATALOG[0];
       id = entry.id;
       const res = await fetch(entry.file);
-      if (!res.ok) throw new Error(`le serveur a répondu ${res.status}`);
+      if (!res.ok) throw new Error(t('server_error', { status: res.status }));
       src = await res.text();
     }
     if (token !== loadToken) return;
-    loading.textContent = 'Assemblage des pièces 3D…';
+    loading.textContent = t('assembling');
     const m = await loadModel(src, id);
     if (token !== loadToken) return;
     model = m;
     viewer.setModel(m);
-    const author = modelAuthor(src);
-    $('author').textContent = author ? `, modèle de ${author}` : '';
-    $('meta').innerHTML =
-      `<span>${m.parts.length} pièces</span><span>${m.steps.length} étapes</span>` +
-      (m.subs.length ? `<span>${m.subs.length} sous-ensembles</span>` : '') +
-      `<span class="chip ${m.generated ? 'auto' : ''}">${m.generated ? 'étapes générées' : 'étapes d’origine'}</span>`;
+    author = modelAuthor(src);
+    renderMeta();
     $('invCount').textContent = `· ${m.parts.length}`;
     $('invParts').innerHTML = '';
     if (($('inv') as HTMLDetailsElement).open) renderInventory();
@@ -83,15 +87,24 @@ async function openSet(id: string, text?: string, label?: string) {
     else {
       goTo(0, false, true);
       if (saved && saved > 0 && saved < m.steps.length) {
-        $('resumeText').textContent = `Tu t’étais arrêté à l’étape ${saved + 1} sur ${m.steps.length}.`;
+        $('resumeText').textContent = t('resume_text', { n: saved + 1, total: m.steps.length });
         $('resume').hidden = false;
       }
     }
   } catch (err) {
     console.error(err);
-    loading.textContent = `Impossible d’ouvrir ce modèle (${(err as Error).message}). ` +
-      'Brick lit les fichiers LDraw autonomes (.mpd « packed »). Choisis un autre set.';
+    loading.textContent = t('open_error', { msg: (err as Error).message });
   }
+}
+
+function renderMeta() {
+  if (!model) return;
+  const m = model;
+  $('author').textContent = author ? t('by_author', { name: author }) : '';
+  $('meta').innerHTML =
+    `<span>${esc(t('meta_parts', { n: m.parts.length }))}</span><span>${esc(t('meta_steps', { n: m.steps.length }))}</span>` +
+    (m.subs.length ? `<span>${esc(t('meta_subs', { n: m.subs.length }))}</span>` : '') +
+    `<span class="chip ${m.generated ? 'auto' : ''}">${esc(t(m.generated ? 'steps_generated' : 'steps_original'))}</span>`;
 }
 
 /* ---------------- steps ---------------- */
@@ -104,8 +117,8 @@ function goTo(n: number, animate = true, quiet = false) {
 
   const label = $('ctx');
   label.hidden = !(ctx || attach);
-  if (attach) label.innerHTML = `Fixe le sous-ensemble <b>${esc(attach.name)}</b>`;
-  else if (ctx) label.innerHTML = `Sous-ensemble <b>${esc(ctx.name)}</b>`;
+  if (attach) label.innerHTML = `${esc(t('ctx_attach'))} <b>${esc(attach.name)}</b>`;
+  else if (ctx) label.innerHTML = `${esc(t('ctx_sub'))} <b>${esc(ctx.name)}</b>`;
 
   $('stepBig').textContent = String(n + 1);
   $('stepOf').textContent = `/ ${model.steps.length}`;
@@ -139,7 +152,8 @@ function narrate() {
     kind: attach ? 'attach' : 'parts',
     subName: attach?.name,
     startsSub: ctx && ctx.firstIdx === current ? ctx.name : null,
-    groups: groupParts(fresh, model.meta).map((g) => ({ count: g.count, word: g.word, dims: g.dims, colour: g.colour })),
+    groups: groupParts(fresh, model.meta, lang).map((g) => ({ count: g.count, word: g.word, dims: g.dims, colour: g.colour })),
+    lang,
   }));
 }
 
@@ -159,14 +173,14 @@ function partItem(g: ReturnType<typeof groupParts<PartInfo>>[number]) {
 }
 
 function renderParts(fresh: PartInfo[]) {
-  const groups = groupParts(fresh, model!.meta);
-  $('calloutTitle').textContent = 'Pièces de cette étape';
-  $('calloutCount').textContent = `${fresh.length} pièce${fresh.length > 1 ? 's' : ''}`;
+  const groups = groupParts(fresh, model!.meta, lang);
+  $('calloutTitle').textContent = t('step_parts');
+  $('calloutCount').textContent = t(fresh.length > 1 ? 'parts_many' : 'parts_one', { n: fresh.length });
   $('stepParts').replaceChildren(...groups.map(partItem));
 }
 
 function renderAttach(S: SubAssembly) {
-  $('calloutTitle').textContent = 'Fixe ce sous-ensemble';
+  $('calloutTitle').textContent = t('attach_title');
   $('calloutCount').textContent = '';
   const li = document.createElement('li');
   li.className = 'part sub';
@@ -180,7 +194,7 @@ function renderAttach(S: SubAssembly) {
 
 function renderInventory() {
   if (!model || $('invParts').childElementCount) return;
-  const groups = groupParts(model.parts, model.meta);
+  const groups = groupParts(model.parts, model.meta, lang);
   const ul = $('invParts');
   const token = loadToken;
   let i = 0;
@@ -207,7 +221,7 @@ function run(cmd: Command) {
   const last = model.steps.length - 1;
   switch (cmd.type) {
     case 'next':
-      if (current === last) speaker.speak('C’est la dernière étape. Bravo, le modèle est terminé !');
+      if (current === last) speaker.speak(t('say_last'));
       else goTo(current + 1);
       break;
     case 'prev': goTo(current - 1); break;
@@ -217,8 +231,8 @@ function run(cmd: Command) {
     case 'repeat': narrate(); break;
     case 'parts': {
       const fresh = lastShown?.fresh ?? [];
-      const s = partsSentence(groupParts(fresh, model.meta).map((g) => ({ count: g.count, word: g.word, dims: g.dims, colour: g.colour })), 8);
-      speaker.speak(s ? `Prends ${s}.` : 'Pas de nouvelle pièce : fixe le sous-ensemble.');
+      const s = partsSentence(groupParts(fresh, model.meta, lang).map((g) => ({ count: g.count, word: g.word, dims: g.dims, colour: g.colour })), 8, lang);
+      speaker.speak(s ? t('say_take', { list: s }) : t('say_no_parts'));
       break;
     }
     case 'zoomIn': viewer.zoom(0.7); break;
@@ -229,28 +243,23 @@ function run(cmd: Command) {
     case 'reset': viewer.setSpin(false); optSpin.checked = false; viewer.reset(); break;
     case 'stop': speaker.stop(); viewer.setSpin(false); optSpin.checked = false; break;
     case 'help':
-      speaker.speak('Tu peux dire : suivant, précédent, répète, pièces, étape et un numéro, zoom, recule, tourne à gauche ou à droite, et stop.');
+      speaker.speak(t('say_help'));
       break;
   }
 }
 
 const voiceBtn = $<HTMLButtonElement>('voiceBtn');
-const STATUS: Record<VoiceState, string> = {
-  off: 'Mains libres : dis « suivant », « répète » ou « étape 12 ».',
-  starting: 'Activation du micro…',
-  listening: 'J’écoute. Dis « suivant » quand l’étape est faite.',
-  paused: 'Je parle… (micro en pause pour ne pas m’entendre moi-même)',
-  unsupported: 'Ton navigateur ne gère pas la reconnaissance vocale. Utilise Chrome, Edge ou Safari.',
-  denied: 'Micro refusé. Autorise-le dans les réglages du site, puis réessaie.',
-  error: 'Le micro a eu un souci, je réessaie…',
-};
-voice.onState = (s, detail) => {
+function renderVoice(detail?: string) {
   const on = voice.active;
   voiceBtn.setAttribute('aria-pressed', String(on));
-  voiceBtn.classList.toggle('paused', s === 'paused');
-  $('voiceLabel').textContent = on ? 'Voix activée' : 'Activer la voix';
-  $('voiceStatus').textContent = STATUS[s] + (s === 'error' && detail ? ` (${detail})` : '');
+  voiceBtn.classList.toggle('paused', voiceState === 'paused');
+  $('voiceLabel').textContent = t(on ? 'voice_btn_on' : 'voice_btn');
+  $('voiceStatus').textContent = t(`st_${voiceState}`) + (voiceState === 'error' && detail ? ` (${detail})` : '');
   if (!on) $('heard').hidden = true;
+}
+voice.onState = (s, detail) => {
+  voiceState = s;
+  renderVoice(detail);
 };
 voice.onCommand = (cmd, heard) => {
   toast(`<q>${esc(heard)}</q>`);
@@ -261,7 +270,7 @@ voice.onCommand = (cmd, heard) => {
 voice.onUnknown = (heard) => {
   if (!heard) return;
   track('voice_unrecognized');
-  $('heard').textContent = `Entendu : « ${heard} » — pas une commande.`;
+  $('heard').textContent = t('heard_unknown', { t: heard });
   $('heard').hidden = false;
 };
 speaker.onStart = () => voice.pause();
@@ -273,7 +282,7 @@ voiceBtn.addEventListener('click', () => {
   voice.start();
   track('voice_on');
   keepAwake();
-  speaker.speak('C’est parti. Dis suivant quand tu as fini une étape.');
+  speaker.speak(t('say_start'));
 });
 
 /* ---------------- keep the screen on while building ---------------- */
@@ -301,8 +310,8 @@ $<HTMLInputElement>('fileIn').addEventListener('change', async (e) => {
   const f = (e.target as HTMLInputElement).files?.[0];
   if (!f) return;
   const text = await f.text();
-  if (![...setSel.options].some((o) => o.value === 'file')) setSel.add(new Option(`Fichier : ${f.name}`, 'file'));
-  else setSel.querySelector<HTMLOptionElement>('option[value=file]')!.text = `Fichier : ${f.name}`;
+  if (![...setSel.options].some((o) => o.value === 'file')) setSel.add(new Option(t('file_option', { name: f.name }), 'file'));
+  else setSel.querySelector<HTMLOptionElement>('option[value=file]')!.text = t('file_option', { name: f.name });
   setSel.value = 'file';
   history.pushState(null, '', '/build/');
   openSet(`file:${f.name}`, text, f.name);
@@ -332,7 +341,35 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(current - 1); }
 });
 
-$('cmds').innerHTML = COMMAND_HELP.map((c) => `<dt>« ${esc(c.say)} »</dt><dd>${esc(c.does)}</dd>`).join('');
+/* ---------------- language ---------------- */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n!); });
+  document.querySelectorAll<HTMLElement>('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', t(el.dataset.i18nAria!)));
+  document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle!); });
+  document.querySelectorAll<HTMLButtonElement>('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  $<HTMLAnchorElement>('legoLink').href = `https://www.lego.com/${LEGO_LOCALE[lang]}/service/building-instructions`;
+  $('cmds').innerHTML = COMMAND_HELP[lang].map((c) => `<dt><q>${esc(c.say)}</q></dt><dd>${esc(c.does)}</dd>`).join('');
+  renderVoice();
+  if (model) {
+    renderMeta();
+    $('invParts').innerHTML = '';
+    if (($('inv') as HTMLDetailsElement).open) renderInventory();
+    goTo(current, false, true);
+    const saved = getProgress(model.id);
+    if (!$('resume').hidden && saved !== null) $('resumeText').textContent = t('resume_text', { n: saved + 1, total: model.steps.length });
+  }
+}
+document.querySelectorAll<HTMLButtonElement>('[data-lang]').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.lang === lang) return;
+  lang = b.dataset.lang as Lang;
+  saveLang(lang);
+  speaker.setLang(lang);
+  voice.setLang(lang);
+  applyLang();
+  track('select_language', { language: lang });
+}));
+applyLang();
 
 /* ---------------- start ---------------- */
 function openFromUrl() {
@@ -349,7 +386,7 @@ openFromUrl();
 if (import.meta.env.DEV) {
   (window as unknown as { __brick: unknown }).__brick = {
     hear(text: string) {
-      const c = parseCommand(text);
+      const c = parseCommand(text, lang);
       if (c) voice.onCommand?.(c, text);
       else voice.onUnknown?.(text);
     },

@@ -20,6 +20,9 @@ export function saveLang(lang: Lang) {
   try { localStorage.setItem(KEY, lang); } catch { /* storage blocked */ }
 }
 
+/** speech recognition / synthesis locale */
+export const SPEECH_LOCALE: Record<Lang, string> = { en: 'en-US', fr: 'fr-FR', es: 'es-ES' };
+
 /** lego.com locale used for "official instructions" links */
 export const LEGO_LOCALE: Record<Lang, string> = { en: 'en-us', fr: 'fr-fr', es: 'es-es' };
 

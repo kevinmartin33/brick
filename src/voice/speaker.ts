@@ -1,4 +1,6 @@
-// Text-to-speech in French. Tells the listener when it talks, so the mic does not hear the app itself.
+// Text-to-speech (French, English or Spanish). Tells the listener when it talks, so the mic does not hear the app itself.
+
+import { SPEECH_LOCALE, type Lang } from '../shared/i18n';
 
 export class Speaker {
   readonly supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -7,17 +9,28 @@ export class Speaker {
   private voice: SpeechSynthesisVoice | null = null;
   private current: SpeechSynthesisUtterance | null = null;
   private safety = 0;
+  private lang: Lang = 'fr';
 
-  constructor() {
+  constructor(lang: Lang = 'fr') {
+    this.lang = lang;
     if (!this.supported) return;
-    const pick = () => {
-      const fr = speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('fr'));
-      const score = (v: SpeechSynthesisVoice) =>
-        (v.lang.toLowerCase() === 'fr-fr' ? 2 : 0) + (/google|amélie|amelie|thomas|audrey|premium|enhanced/i.test(v.name) ? 1 : 0);
-      this.voice = fr.sort((a, b) => score(b) - score(a))[0] ?? null;
-    };
-    pick();
-    speechSynthesis.addEventListener('voiceschanged', pick);
+    this.pick();
+    speechSynthesis.addEventListener('voiceschanged', () => this.pick());
+  }
+
+  setLang(lang: Lang) {
+    this.lang = lang;
+    this.stop();
+    this.pick();
+  }
+
+  private pick() {
+    if (!this.supported) return;
+    const locale = SPEECH_LOCALE[this.lang].toLowerCase();
+    const same = speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith(this.lang));
+    const score = (v: SpeechSynthesisVoice) =>
+      (v.lang.toLowerCase() === locale ? 2 : 0) + (/google|premium|enhanced|natural|amélie|thomas|samantha|mónica|monica/i.test(v.name) ? 1 : 0);
+    this.voice = same.sort((a, b) => score(b) - score(a))[0] ?? null;
   }
 
   get speaking() { return this.current !== null; }
@@ -26,7 +39,7 @@ export class Speaker {
     if (!this.supported || !text) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR';
+    u.lang = SPEECH_LOCALE[this.lang];
     if (this.voice) u.voice = this.voice;
     const done = () => {
       if (this.current !== u) return; // an older utterance that was cancelled

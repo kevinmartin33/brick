@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { partsSentence, stepNarration } from './narration';
-import { modelAuthor, parseMeta, partLabel, subAssemblyName } from './ldraw/meta';
+import { groupParts, modelAuthor, parseMeta, partLabel, subAssemblyName } from './ldraw/meta';
 
 describe('narration', () => {
   it('reads the parts of a step in French', () => {
@@ -57,5 +57,31 @@ describe('LDraw meta', () => {
     expect(partLabel('Brick  2 x  4').label).toBe('brique 2×4');
     expect(partLabel('Plate  1 x  2 x  0.667').dims).toBe('1×2×0.667');
     expect(partLabel('~Dish  3 x  3 Inverted').word).toBe('parabole');
+  });
+});
+
+describe('narration in English and Spanish', () => {
+  const groups = [
+    { count: 2, word: 'plate', dims: '2×4', colour: 'red' },
+    { count: 1, word: 'brick', dims: '1×2', colour: 'black' },
+  ];
+  it('reads a step in English', () => {
+    expect(stepNarration({ n: 3, total: 40, kind: 'parts', groups, lang: 'en' }))
+      .toBe('Step 3. Add 2 red plates, 2 by 4 and 1 black brick, 1 by 2.');
+    expect(stepNarration({ n: 9, total: 9, kind: 'attach', subName: 'Wing', groups: [], lang: 'en' }))
+      .toBe('Last step, 9. Attach the Wing sub-assembly.');
+  });
+  it('reads a step in Spanish', () => {
+    const es = [{ count: 2, word: 'placa', dims: '2×4', colour: 'rojo' }, { count: 3, word: 'motor', dims: '', colour: 'negro' }];
+    expect(stepNarration({ n: 3, total: 40, kind: 'parts', startsSub: 'R2-D2', groups: es, lang: 'es' }))
+      .toBe('Paso 3. Nuevo subconjunto: R2-D2. Añade 2 placas 2 por 4 rojo y 3 motores negro.');
+  });
+  it('labels parts and colours per language', () => {
+    const meta = parseMeta('0 !COLOUR Light_Bluish_Grey CODE 71 VALUE #A0A5A9 EDGE #333333\n0 FILE parts/3001.dat\n0 Brick  2 x  4');
+    expect(partLabel('Brick  2 x  4', 'en').label).toBe('brick 2×4');
+    expect(partLabel('Brick  2 x  4', 'es').label).toBe('ladrillo 2×4');
+    const [g] = groupParts([{ fn: 'parts/3001.dat', code: '71', key: 'k' }], meta, 'es');
+    expect(`${g.word} ${g.colour}`).toBe('ladrillo gris claro');
+    expect(groupParts([{ fn: 'parts/3001.dat', code: '71', key: 'k' }], meta, 'en')[0].colour).toBe('light gray');
   });
 });
